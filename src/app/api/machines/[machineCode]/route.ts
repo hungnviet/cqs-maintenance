@@ -11,9 +11,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ mach
   await dbConnect();
   
   // Ensure models are registered
-  MachineType;
-  SparePart;
-  MachineMaintenanceFormTemplate;
+  void MachineType;
+  void SparePart;
+  void MachineMaintenanceFormTemplate;
   
   const { machineCode } = await params;
   
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ mach
     let populatedSparePartMaintenance = [];
     if (machine.sparePartMaintenance && machine.sparePartMaintenance.length > 0) {
       populatedSparePartMaintenance = await Promise.all(
-        machine.sparePartMaintenance.map(async (item: any) => {
+        machine.sparePartMaintenance.map(async (item: { sparePart: string; frequencies: string[]; quantity: number; toObject: () => Record<string, unknown> }) => {
           const sparePart = await SparePart.findById(item.sparePart, 'sparePartCode sparePartName sparePartPrice inventoryQuantity');
           return {
             ...item.toObject(),

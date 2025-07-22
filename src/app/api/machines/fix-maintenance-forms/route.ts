@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Machine from '@/models/Machine';
 import MachineMaintenanceFormTemplate from '@/models/MachineMaintenanceFormTemplate';
 
 // POST /api/machines/fix-maintenance-forms
 // This is a one-time fix for existing machines that don't have maintenanceForms populated
-export async function POST(req: NextRequest) {
+export async function POST() {
   await dbConnect();
   
   try {

@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Save, Check, X, Image as ImageIcon } from 'lucide-react';
+import { Save, Check, X  } from 'lucide-react';
 
 interface MachineDetail {
   _id: string;
@@ -235,11 +235,13 @@ export default function MaintenanceFormFiller({
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {machine.images.map((image, index) => (
-                <div key={index} className="aspect-square border rounded-lg overflow-hidden bg-gray-50">
-                  <img
+                <div key={index} className="aspect-square border rounded-lg overflow-hidden bg-gray-50 relative">
+                  <Image
                     src={image}
                     alt={`Machine image ${index + 1}`}
-                    className="w-full h-full object-cover"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover"
                   />
                 </div>
               ))}

@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, Copy, Check } from 'lucide-react';
@@ -47,7 +46,7 @@ export default function MachineMaintenanceCustomization({
     if (machineType) {
       loadTemplatesFromType();
     }
-  }, [machineType]);
+  }, [machineType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadTemplatesFromType = async () => {
     if (!machineType) return;
@@ -58,7 +57,7 @@ export default function MachineMaintenanceCustomization({
       if (machineType.templates && machineType.templates.length > 0) {
         // Use templates from the machine type detail
         const initialTemplates = frequencies.map(frequency => {
-          const typeTemplate = machineType.templates!.find((t: any) => t.frequency === frequency);
+          const typeTemplate = machineType.templates!.find((t: { frequency: string; groups: Group[] }) => t.frequency === frequency);
           return {
             frequency,
             groups: typeTemplate ? typeTemplate.groups : []
@@ -73,7 +72,7 @@ export default function MachineMaintenanceCustomization({
         }));
         onChange(emptyTemplates);
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to load maintenance templates');
       // Initialize empty templates as fallback
       const emptyTemplates = frequencies.map(frequency => ({

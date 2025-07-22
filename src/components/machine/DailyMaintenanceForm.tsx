@@ -105,13 +105,13 @@ export default function DailyMaintenanceForm({ template, machine, renderMachineI
           <TableBody>
             <TableRow>
               <TableCell className="border border-gray-300 p-2 text-center font-medium" rowSpan={3}>
-                <div><strong>Operator "O"</strong></div>
+                <div><strong>Operator &quot;O&quot;</strong></div>
               </TableCell>
               <TableCell className="border border-gray-300 p-2 text-center font-medium" rowSpan={3}>
-                <div><strong>Leader "O"</strong></div>
+                <div><strong>Leader &quot;O&quot;</strong></div>
               </TableCell>
               <TableCell className="border border-gray-300 p-2 text-center font-medium" rowSpan={3}>
-                <div><strong>Maintenance "Y"</strong></div>
+                <div><strong>Maintenance &quot;Y&quot;</strong></div>
               </TableCell>
               <TableCell className="border border-gray-300 p-2 text-center font-medium">
                 <div><strong>Operator</strong></div>

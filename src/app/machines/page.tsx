@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getAllMachines } from '@/hooks/machine';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Button } from '@/components/ui/button';
@@ -10,8 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, Eye, Filter } from 'lucide-react';
+import { Search, Plus, Eye, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { Suspense } from 'react';
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
 
 interface Machine {
   _id: string;
@@ -26,7 +30,12 @@ interface Machine {
   purchaseDate: string;
 }
 
-export default function MachinesPage() {
+function MachinesPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams(); // This makes the page dynamic
+  
+  // Force dynamic rendering by accessing window object
+  const [isHydrated, setIsHydrated] = useState(false);
   const [machines, setMachines] = useState<Machine[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,17 +44,13 @@ export default function MachinesPage() {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
-  const router = useRouter();
+  const [lastRefresh, setLastRefresh] = useState(Date.now());
 
   // Debounce search and filter values to avoid excessive API calls
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const debouncedPlantFilter = useDebounce(plantFilter, 500);
 
-  useEffect(() => {
-    loadMachines();
-  }, [pageIndex, debouncedSearchTerm, debouncedPlantFilter, statusFilter]);
-
-  const loadMachines = async () => {
+  const loadMachines = useCallback(async (forceRefresh: boolean = false) => {
     try {
       setLoading(true);
       const response = await getAllMachines({
@@ -54,7 +59,7 @@ export default function MachinesPage() {
         status: statusFilter === 'all' ? '' : statusFilter,
         pageIndex,
         pageSize,
-      });
+      }, forceRefresh);
       
       if (response.success) {
         setMachines(response.data || []);
@@ -62,11 +67,86 @@ export default function MachinesPage() {
       } else {
         toast.error('Failed to load machines');
       }
-    } catch (error) {
+    } catch  {
       toast.error('Failed to load machines');
     } finally {
       setLoading(false);
     }
+  }, [debouncedSearchTerm, debouncedPlantFilter, statusFilter, pageIndex, pageSize]);
+
+  useEffect(() => {
+    // This will only run on the client, forcing dynamic behavior
+    if (typeof window !== 'undefined') {
+      setIsHydrated(true);
+    }
+  }, []);
+
+  // Use searchParams to initialize from URL (makes it truly dynamic)
+  useEffect(() => {
+    if (searchParams && isHydrated) {
+      const urlSearch = searchParams.get('search') || '';
+      const urlPlant = searchParams.get('plant') || '';
+      const urlStatus = searchParams.get('status') || 'all';
+      const urlPage = parseInt(searchParams.get('page') || '0');
+      
+      setSearchTerm(urlSearch);
+      setPlantFilter(urlPlant);
+      setStatusFilter(urlStatus);
+      setPageIndex(urlPage);
+    }
+  }, [searchParams, isHydrated]);
+
+  useEffect(() => {
+    loadMachines(false); // Don't force refresh on normal load
+  }, [loadMachines]);
+
+  // Force refresh when lastRefresh changes
+  useEffect(() => {
+    if (lastRefresh > Date.now() - 1000) { // Only if refresh was triggered recently
+      loadMachines(true); // Force refresh when manual refresh is triggered
+    }
+  }, [lastRefresh, loadMachines]);
+
+  // Refresh data when page becomes visible (user navigates back)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        setLastRefresh(Date.now());
+      }
+    };
+
+    const handleFocus = () => {
+      setLastRefresh(Date.now());
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
+  // Auto-refresh every 30 seconds when page is active
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!document.hidden && !loading) {
+        setLastRefresh(Date.now());
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [loading]);
+
+  if (!isHydrated) {
+    return <div>Loading...</div>;
+  }
+
+  // Manual refresh function
+  const refreshData = () => {
+    setLastRefresh(Date.now());
+    toast.success('Refreshing machines data...');
   };
 
   const handleSearch = (value: string) => {
@@ -104,10 +184,21 @@ export default function MachinesPage() {
             Manage machines and their maintenance schedules
           </p>
         </div>
-        <Button onClick={() => router.push('/machines/new')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create New Machine
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => router.push('/machines/new')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create New Machine
+          </Button>
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={refreshData}
+            disabled={loading}
+            title="Refresh data"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -258,5 +349,13 @@ export default function MachinesPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function MachinesPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <MachinesPageContent />
+    </Suspense>
   );
 }

@@ -2,14 +2,6 @@
 
 import { useState } from 'react';
 
-interface User {
-  _id: string;
-  name: string;
-  email: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export default function UserForm() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -39,7 +31,7 @@ export default function UserForm() {
       } else {
         setMessage(data.error || 'Failed to create user');
       }
-    } catch (error) {
+    } catch {
       setMessage('An error occurred while creating the user');
     } finally {
       setLoading(false);

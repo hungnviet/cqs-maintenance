@@ -1,13 +1,16 @@
 "use client";
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getAllMachineTypes } from '@/hooks/machine-types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Plus, Eye } from 'lucide-react';
+import { Search, Plus, Eye, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
 
 interface MachineType {
   _id: string;
@@ -17,27 +20,27 @@ interface MachineType {
   description?: string;
 }
 
-export default function MachineTypesPage() {
+function MachineTypesPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams(); // This makes the page dynamic
+  
+  // Force dynamic rendering by accessing window object
+  const [isHydrated, setIsHydrated] = useState(false);
   const [machineTypes, setMachineTypes] = useState<MachineType[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
-  const router = useRouter();
 
-  useEffect(() => {
-    loadMachineTypes();
-  }, [pageIndex, searchTerm]);
-
-  const loadMachineTypes = async () => {
+  const loadMachineTypes = useCallback(async (forceRefresh: boolean = false) => {
     try {
       setLoading(true);
       const response = await getAllMachineTypes({
         search: searchTerm,
         pageIndex,
         pageSize,
-      });
+      }, forceRefresh);
       
       if (response.success) {
         setMachineTypes(response.data || []);
@@ -46,10 +49,45 @@ export default function MachineTypesPage() {
         toast.error('Failed to load machine types');
       }
     } catch (error) {
+      console.error('Error loading machine types:', error);
       toast.error('Failed to load machine types');
     } finally {
       setLoading(false);
     }
+  }, [searchTerm, pageIndex, pageSize]);
+
+  useEffect(() => {
+    // This will only run on the client, forcing dynamic behavior
+    if (typeof window !== 'undefined') {
+      setIsHydrated(true);
+    }
+  }, []);
+
+  // Use searchParams to initialize from URL (makes it truly dynamic)
+  useEffect(() => {
+    if (searchParams && isHydrated) {
+      const urlSearch = searchParams.get('search') || '';
+      const urlPage = parseInt(searchParams.get('page') || '0');
+      
+      setSearchTerm(urlSearch);
+      setPageIndex(urlPage);
+    }
+  }, [searchParams, isHydrated]);
+
+  useEffect(() => {
+    if (isHydrated) {
+      loadMachineTypes();
+    }
+  }, [loadMachineTypes, isHydrated]);
+
+  if (!isHydrated) {
+    return <div>Loading...</div>;
+  }
+
+  // Manual refresh function
+  const refreshData = () => {
+    loadMachineTypes(true);
+    toast.success('Refreshing machine types...');
   };
 
   const handleSearch = (value: string) => {
@@ -68,10 +106,21 @@ export default function MachineTypesPage() {
             Manage machine types and their maintenance templates
           </p>
         </div>
-        <Button onClick={() => router.push('/machine-types/new')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create New Machine Type
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => router.push('/machine-types/new')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create New Machine Type
+          </Button>
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={refreshData}
+            disabled={loading}
+            title="Refresh data"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -99,7 +148,7 @@ export default function MachineTypesPage() {
               <div className="text-gray-500">
                 {searchTerm ? (
                   <>
-                    <p className="text-lg">No machine types found matching "{searchTerm}"</p>
+                    <p className="text-lg">No machine types found matching {searchTerm}</p>
                     <p className="text-sm mt-1">Try adjusting your search terms</p>
                   </>
                 ) : (
@@ -192,5 +241,13 @@ export default function MachineTypesPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function MachineTypesPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <MachineTypesPageContent />
+    </Suspense>
   );
 } 

@@ -78,8 +78,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const machine = searchParams.get('machine');
     const frequency = searchParams.get('frequency');
-    
-    const filter: any = {};
+
+    const filter: Record<string, unknown> = {};
     if (machine) filter.machine = machine;
     if (frequency) filter.frequency = frequency;
     

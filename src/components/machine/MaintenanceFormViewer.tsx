@@ -1,8 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Check, X } from 'lucide-react';
 
@@ -71,14 +70,17 @@ export default function MaintenanceFormViewer({ form }: MaintenanceFormViewerPro
       );
     }
 
+    
     const imageElements = images.map((imageUrl, index) => (
-      <div key={index} className="border border-black bg-gray-50">
-        <img 
-          src={imageUrl} 
+      <div key={index} className="border border-black bg-gray-50 relative w-full h-full">
+        <Image 
+          src={imageUrl}
           alt={`Machine image ${index + 1}`}
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBzdHJva2U9IiM2NjY2NjYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=';
+          fill
+          sizes="(max-width: 768px) 100vw, 50vw"
+          className="object-cover"
+          onError={() => {
+            console.log(`Error loading image ${index + 1}`);
           }}
         />
       </div>

@@ -4,12 +4,12 @@ import MachineTypeMaintenanceFormTemplate from '@/models/MachineTypeMaintenanceF
 
 export async function GET(
   req: NextRequest, 
-  { params }: { params: { machineTypeCode: string } }
+  { params }: { params: Promise<{ machineTypeCode: string }> }
 ) {
   await dbConnect();
   
   try {
-    const { machineTypeCode } = params;
+    const { machineTypeCode } = await params;
     
     const templates = await MachineTypeMaintenanceFormTemplate.find({ 
       machineType: machineTypeCode 

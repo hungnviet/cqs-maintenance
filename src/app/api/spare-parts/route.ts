@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const sortOrder = searchParams.get('sortOrder') === 'desc' ? -1 : 1;
   const plant = searchParams.get('plant') || '';
 
-  const filter: any = {};
+  const filter: Record<string, unknown> = {};
   if (search) {
     filter.$or = [
       { sparePartName: { $regex: search, $options: 'i' } },

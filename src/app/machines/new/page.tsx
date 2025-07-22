@@ -1,18 +1,33 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { ArrowLeft, ArrowRight, Check, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAllMachineTypes, getMachineTypeDetail, MachineType, DetailedMachineType } from '@/hooks/machine-types';
+import { getMachineTypeDetail, MachineType, DetailedMachineType } from '@/hooks/machine-types';
 import { createMachine } from '@/hooks/machine';
 import MachineTypeSelection from '@/components/machine/MachineTypeSelection';
 import MachineBasicInfo from '@/components/machine/MachineBasicInfo';
 import MachineSpecifications from '@/components/machine/MachineSpecifications';
 import MachineMaintenanceCustomization from '@/components/machine/MachineMaintenanceCustomization';
 import MachineSparePartsSelection from '@/components/machine/MachineSparePartsSelection';
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
+interface MaintenanceTemplate {
+  frequency: string;
+  groups: {
+    groupTitle: string;
+    requirements: {
+      titleEng: string;
+      titleVn: string;
+      note?: string;
+    }[];
+  }[];
+}
 
 interface MachineFormData {
   machineName: string;
@@ -24,7 +39,7 @@ interface MachineFormData {
   description: string;
   specifications: { title: string; value: string }[];
   images: File[];
-  maintenanceTemplates: any[];
+  maintenanceTemplates: MaintenanceTemplate[];
   sparePartMaintenance: { frequencies: string[]; sparePart: string; quantity: number }[];
 }
 
@@ -36,14 +51,18 @@ const steps = [
   { id: 5, title: 'Spare Parts', description: 'Select spare parts for maintenance' },
 ];
 
-export default function NewMachinePage() {
+function NewMachinePageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams(); // This makes the page dynamic
+  
+  // Force dynamic rendering by accessing window object
+  const [isHydrated, setIsHydrated] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [selectedMachineType, setSelectedMachineType] = useState<MachineType | null>(null);
   const [detailedMachineType, setDetailedMachineType] = useState<DetailedMachineType | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
-  
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [formData, setFormData] = useState<MachineFormData>({
     machineName: '',
     machineCode: '',
@@ -57,9 +76,43 @@ export default function NewMachinePage() {
     maintenanceTemplates: [],
     sparePartMaintenance: [],
   });
+  
+  useEffect(() => {
+    // This will only run on the client, forcing dynamic behavior
+    if (typeof window !== 'undefined') {
+      setIsHydrated(true);
+    }
+  }, []);
+  
+  // Use searchParams to initialize from URL (makes it truly dynamic)
+  useEffect(() => {
+    if (searchParams && isHydrated) {
+      const urlStep = parseInt(searchParams.get('step') || '1');
+      setCurrentStep(urlStep);
+    }
+  }, [searchParams, isHydrated]);
+
+  // Reset form when refresh trigger changes (useful if machine types get updated)
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      setSelectedMachineType(null);
+      setDetailedMachineType(null);
+      setCurrentStep(1);
+    }
+  }, [refreshTrigger]);
+
+  if (!isHydrated) {
+    return <div>Loading...</div>;
+  }
 
   const updateFormData = (newData: Partial<MachineFormData>) => {
     setFormData(prev => ({ ...prev, ...newData }));
+  };
+
+  // Add refresh mechanism for dynamic data loading
+  const refreshData = () => {
+    setRefreshTrigger(prev => prev + 1);
+    toast.success('Refreshing machine types and spare parts...');
   };
 
   const handleMachineTypeSelection = async (machineType: MachineType) => {
@@ -85,7 +138,7 @@ export default function NewMachinePage() {
       } else {
         toast.error('Failed to load machine type details');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to load machine type details');
     } finally {
       setLoadingDetails(false);
@@ -139,7 +192,7 @@ export default function NewMachinePage() {
       } else {
         toast.error(response.error || 'Failed to create machine');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to create machine');
     } finally {
       setLoading(false);
@@ -179,6 +232,17 @@ export default function NewMachinePage() {
             <h1 className="text-3xl font-bold">Create New Machine</h1>
             <p className="text-gray-500">Step {currentStep} of {steps.length}</p>
           </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={refreshData}
+            disabled={loadingDetails}
+            title="Refresh machine types"
+          >
+            <RefreshCw className={`h-4 w-4 ${loadingDetails ? 'animate-spin' : ''}`} />
+          </Button>
         </div>
       </div>
 
@@ -224,6 +288,7 @@ export default function NewMachinePage() {
               <MachineTypeSelection
                 selectedType={selectedMachineType}
                 onSelect={handleMachineTypeSelection}
+                key={refreshTrigger} // Force re-render to fetch latest data
               />
               {loadingDetails && (
                 <div className="flex items-center justify-center py-4">
@@ -255,15 +320,16 @@ export default function NewMachinePage() {
             <MachineMaintenanceCustomization
               machineType={detailedMachineType}
               templates={formData.maintenanceTemplates}
-              onChange={(maintenanceTemplates: any[]) => updateFormData({ maintenanceTemplates })}
+              onChange={(maintenanceTemplates: MaintenanceTemplate[]) => updateFormData({ maintenanceTemplates })}
             />
           )}
 
           {currentStep === 5 && (
             <MachineSparePartsSelection
               sparePartMaintenance={formData.sparePartMaintenance}
-              onChange={(sparePartMaintenance) => updateFormData({ sparePartMaintenance })}
+              onChange={(sparePartMaintenance: { frequencies: string[]; sparePart: string; quantity: number }[]) => updateFormData({ sparePartMaintenance })}
               plant={formData.plant}
+              key={`spare-parts-${refreshTrigger}`} // Force re-render to fetch latest data
             />
           )}
         </CardContent>
@@ -298,5 +364,13 @@ export default function NewMachinePage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function NewMachinePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <NewMachinePageContent />
+    </Suspense>
   );
 }

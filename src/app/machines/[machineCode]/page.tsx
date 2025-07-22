@@ -1,16 +1,14 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Edit, Calendar, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { getMachineDetail, MachineDetail } from '@/hooks/machine';
 import MachineGeneralInfo from '@/components/machine/MachineGeneralInfo';
-import MachineScheduledMaintenance from '@/components/machine/MachineScheduledMaintenance';
 import MachineMaintenanceTemplates from '@/components/machine/MachineMaintenanceTemplates';
 
 export default function MachineDetailPage() {
@@ -21,11 +19,7 @@ export default function MachineDetailPage() {
   const [machine, setMachine] = useState<MachineDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadMachine();
-  }, [machineCode]);
-
-  const loadMachine = async () => {
+  const loadMachine = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getMachineDetail(machineCode);
@@ -36,12 +30,17 @@ export default function MachineDetailPage() {
         router.push('/machines');
       }
     } catch (error) {
+      console.error('Error loading machine:', error);
       toast.error('Failed to load machine');
       router.push('/machines');
     } finally {
       setLoading(false);
     }
-  };
+  }, [machineCode, router]);
+
+  useEffect(() => {
+    loadMachine();
+  }, [loadMachine]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

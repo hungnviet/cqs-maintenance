@@ -11,8 +11,8 @@ import { uploadImageToCloudinary } from '@/lib/cloudinary';
 // GET /api/machines
 export async function GET(req: NextRequest) {
   await dbConnect();
-  MachineType;
-  
+  void MachineType;
+
   const { searchParams } = new URL(req.url);
   const search = searchParams.get('search') || '';
   const plant = searchParams.get('plant') || '';
@@ -21,8 +21,8 @@ export async function GET(req: NextRequest) {
   const pageSize = parseInt(searchParams.get('pageSize') || '10');
   
   // Build filter query
-  const filter: any = {};
-  
+  const filter: Record<string, unknown> = {};
+
   if (search) {
     filter.$or = [
       { machineName: { $regex: search, $options: 'i' } },

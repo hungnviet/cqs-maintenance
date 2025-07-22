@@ -1,3 +1,4 @@
+import { localStorageManager, CACHE_KEYS, generateCacheKey, invalidateCache } from '@/lib/localStorage';
 // Types for Machine management
 export interface MachineData {
   machineName: string;
@@ -17,6 +18,31 @@ export interface MachineSchedule {
   plannedDate: string;
   actualDate?: string | null;
   status: 'upcoming' | 'late' | 'completed';
+}
+
+export interface MaintenanceForm {
+  _id: string;
+  frequency: string;
+  date: string;
+  machineId: string;
+  machine: string;
+  filledAt: string;
+  preparedBy: string;
+  checkedBy: string;
+  approvedBy: string;
+  maintenanceStartTime: string;
+  maintenanceEndTime: string;
+  maintenanceOperatorNumber: string;
+  remarks: string;
+  groups: Array<{
+    groupTitle: string;
+    requirements: Array<{
+      titleEng: string;
+      titleVn: string;
+      accepted: boolean;
+      note: string;
+    }>;
+  }>;
 }
 
 export interface MachineDetail {
@@ -46,7 +72,7 @@ export interface MachineDetail {
     quantity: number;
   }[];
   maintenanceSchedule: MachineSchedule[];
-  maintenanceForms: any[];
+  maintenanceForms: MaintenanceForm[];
 }
 
 // API Functions
@@ -56,7 +82,17 @@ export async function getAllMachines(params?: {
   status?: string;
   pageIndex?: number;
   pageSize?: number;
-}) {
+}, forceRefresh: boolean = false) {
+  const cacheKey = generateCacheKey(CACHE_KEYS.MACHINES, params || {});
+  
+  // Check cache first unless force refresh
+  if (!forceRefresh) {
+    const cachedData = localStorageManager.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+  }
+
   const searchParams = new URLSearchParams();
   if (params?.search) searchParams.append('search', params.search);
   if (params?.plant) searchParams.append('plant', params.plant);
@@ -64,15 +100,54 @@ export async function getAllMachines(params?: {
   if (params?.pageIndex !== undefined) searchParams.append('pageIndex', params.pageIndex.toString());
   if (params?.pageSize !== undefined) searchParams.append('pageSize', params.pageSize.toString());
   
-  const res = await fetch(`/api/machines?${searchParams}`);
+  // Add cache busting
+  searchParams.append('_t', Date.now().toString());
+  
+  const res = await fetch(`/api/machines?${searchParams}`, {
+    cache: 'no-store', // Prevent caching
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  });
   if (!res.ok) throw new Error('Failed to fetch machines');
-  return res.json();
+  
+  const data = await res.json();
+  
+  // Cache the result for 3 minutes
+  if (data.success) {
+    localStorageManager.set(cacheKey, data, 3);
+  }
+  
+  return data;
 }
 
-export async function getMachineDetail(machineCode: string) {
-  const res = await fetch(`/api/machines/${machineCode}`);
+export async function getMachineDetail(machineCode: string, forceRefresh: boolean = false) {
+  const cacheKey = CACHE_KEYS.MACHINE_DETAIL(machineCode);
+  
+  // Check cache first unless force refresh
+  if (!forceRefresh) {
+    const cachedData = localStorageManager.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+  }
+
+  const res = await fetch(`/api/machines/${machineCode}?_t=${Date.now()}`, {
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  });
   if (!res.ok) throw new Error('Failed to fetch machine detail');
-  return res.json();
+  
+  const data = await res.json();
+  
+  // Cache the result for 5 minutes
+  if (data.success) {
+    localStorageManager.set(cacheKey, data, 5);
+  }
+  
+  return data;
 }
 
 export async function createMachine(data: FormData) {
@@ -81,7 +156,15 @@ export async function createMachine(data: FormData) {
     body: data,
   });
   if (!res.ok) throw new Error('Failed to create machine');
-  return res.json();
+  
+  const result = await res.json();
+  
+  // Invalidate machines cache when creating new machine
+  if (result.success) {
+    invalidateCache.machines();
+  }
+  
+  return result;
 }
 
 export async function updateMachine(machineCode: string, data: FormData) {
@@ -90,7 +173,16 @@ export async function updateMachine(machineCode: string, data: FormData) {
     body: data,
   });
   if (!res.ok) throw new Error('Failed to update machine');
-  return res.json();
+  
+  const result = await res.json();
+  
+  // Invalidate related cache when updating machine
+  if (result.success) {
+    invalidateCache.machines();
+    invalidateCache.machineDetail(machineCode);
+  }
+  
+  return result;
 }
 
 export async function deleteMachine(machineCode: string) {
@@ -98,17 +190,58 @@ export async function deleteMachine(machineCode: string) {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error('Failed to delete machine');
-  return res.json();
+  
+  const result = await res.json();
+  
+  // Invalidate related cache when deleting machine
+  if (result.success) {
+    invalidateCache.machines();
+    invalidateCache.machineDetail(machineCode);
+    invalidateCache.machineSchedule(machineCode);
+  }
+  
+  return result;
+}
+
+export interface ScheduleData {
+  schedules: Array<{
+    frequency: 'Daily' | 'Weekly' | 'Monthly' | 'Half-Yearly' | 'Yearly';
+    plannedDate: Date | string;
+    actualDate: Date | string | null;
+  }>;
 }
 
 // Schedule API Functions
-export async function getMachineSchedule(machineCode: string) {
-  const res = await fetch(`/api/machines/${machineCode}/schedule`);
+export async function getMachineSchedule(machineCode: string, forceRefresh: boolean = false) {
+  const cacheKey = CACHE_KEYS.MACHINE_SCHEDULE(machineCode);
+  
+  // Check cache first unless force refresh
+  if (!forceRefresh) {
+    const cachedData = localStorageManager.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+  }
+
+  const res = await fetch(`/api/machines/${machineCode}/schedule?_t=${Date.now()}`, {
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  });
   if (!res.ok) throw new Error('Failed to fetch machine schedule');
-  return res.json();
+  
+  const data = await res.json();
+  
+  // Cache the result for 2 minutes (shorter since schedules change more frequently)
+  if (data.success) {
+    localStorageManager.set(cacheKey, data, 2);
+  }
+  
+  return data;
 }
 
-export async function updateMachineSchedule(machineCode: string, scheduleData: any) {
+export async function updateMachineSchedule(machineCode: string, scheduleData: ScheduleData) {
   const res = await fetch(`/api/machines/${machineCode}/schedule`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -118,7 +251,7 @@ export async function updateMachineSchedule(machineCode: string, scheduleData: a
   return res.json();
 }
 
-export async function createMachineSchedule(machineCode: string, scheduleData: any) {
+export async function createMachineSchedule(machineCode: string, scheduleData: ScheduleData) {
   const res = await fetch(`/api/machines/${machineCode}/schedule`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

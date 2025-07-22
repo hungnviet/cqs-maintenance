@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Trash2, Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SparePart {
@@ -37,34 +38,18 @@ const frequencies = ['Daily', 'Weekly', 'Monthly', 'Half-Yearly', 'Yearly'];
 
 export default function MachineSparePartsSelection({ 
   sparePartMaintenance, 
-  onChange, 
-  plant 
+  onChange 
 }: MachineSparePartsSelectionProps) {
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSparePartSelector, setShowSparePartSelector] = useState(false);
 
-  useEffect(() => {
-    // Debounce search to avoid too many API calls
-    const timeoutId = setTimeout(() => {
-      loadSpareParts();
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
-
-  // Load spare parts initially
-  useEffect(() => {
-    loadSpareParts();
-  }, []);
-
-  const loadSpareParts = async () => {
+  const loadSpareParts = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
       if (searchTerm.trim()) params.append('search', searchTerm.trim());
-      // Removing plant filter as requested
       params.append('pageSize', '50'); // Get more results for selection
       
       const response = await fetch(`/api/spare-parts?${params}`);
@@ -75,13 +60,27 @@ export default function MachineSparePartsSelection({
       } else {
         toast.error('Failed to load spare parts');
       }
-    } catch (error) {
-      console.error('Error loading spare parts:', error);
+    } catch (err) {
+      console.error('Error loading spare parts:', err);
       toast.error('Failed to load spare parts');
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchTerm]);
+
+  useEffect(() => {
+    // Debounce search to avoid too many API calls
+    const timeoutId = setTimeout(() => {
+      loadSpareParts();
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [loadSpareParts]);
+
+  // Load spare parts initially
+  useEffect(() => {
+    loadSpareParts();
+  }, [loadSpareParts]);
 
   const addSparePartMaintenance = (sparePartId: string) => {
     const newItem: SparePartMaintenance = {
@@ -278,7 +277,7 @@ export default function MachineSparePartsSelection({
                   <p className="text-gray-500">No available spare parts found</p>
                   {searchTerm && (
                     <p className="text-sm text-gray-400 mt-1">
-                      No results for "{searchTerm}"
+                      No results for &quot;{searchTerm}&quot;
                     </p>
                   )}
                 </div>
@@ -293,11 +292,15 @@ export default function MachineSparePartsSelection({
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
                           {sparePart.imageUrl && (
-                            <img
-                              src={sparePart.imageUrl}
-                              alt={sparePart.sparePartName}
-                              className="w-10 h-10 rounded object-cover"
-                            />
+                            <div className="relative w-10 h-10 rounded overflow-hidden">
+                              <Image
+                                src={sparePart.imageUrl}
+                                alt={sparePart.sparePartName}
+                                fill
+                                sizes="40px"
+                                className="object-cover"
+                              />
+                            </div>
                           )}
                           <div>
                             <p className="font-medium">{sparePart.sparePartName}</p>
@@ -322,7 +325,7 @@ export default function MachineSparePartsSelection({
             <div className="text-center py-8 text-gray-500">
               <p>No spare parts selected for maintenance</p>
               <p className="text-sm text-gray-400 mt-1">
-                Add spare parts that will be regularly used for this machine's maintenance
+                Add spare parts that will be regularly used for this machine&apos;s maintenance
               </p>
             </div>
           )}

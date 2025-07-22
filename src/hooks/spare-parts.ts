@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { localStorageManager, generateCacheKey } from '@/lib/localStorage';
 
 export type SparePart = {
   sparePartCode: string;
@@ -36,6 +37,22 @@ export function useSpareParts({ search = '', pageIndex = 1, pageSize = 10, sortB
   useEffect(() => {
     setLoading(true);
     const controller = new AbortController();
+    
+    // Generate cache key for this specific query
+    const cacheKey = generateCacheKey('spare_parts', { 
+      search, pageIndex, pageSize, sortBy, sortOrder, plant 
+    });
+    
+    // Check cache first
+    const cachedData = localStorageManager.get<{data: SparePart[], total: number, allPlants: string[]}>(cacheKey);
+    if (cachedData) {
+      setData(cachedData.data || []);
+      setTotal(cachedData.total || 0);
+      setAllPlants(cachedData.allPlants || []);
+      setLoading(false);
+      return;
+    }
+
     const timeout = setTimeout(() => {
       const params = new URLSearchParams({
         search,
@@ -44,8 +61,15 @@ export function useSpareParts({ search = '', pageIndex = 1, pageSize = 10, sortB
         sortBy,
         sortOrder,
         ...(plant ? { plant } : {}),
+        _t: Date.now().toString(), // Add cache busting
       });
-      fetch(`/api/spare-parts?${params.toString()}`, { signal: controller.signal })
+      fetch(`/api/spare-parts?${params.toString()}`, { 
+        signal: controller.signal,
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      })
         .then(async (res) => {
           if (!res.ok) throw new Error('Failed to fetch');
           return res.json();
@@ -56,6 +80,13 @@ export function useSpareParts({ search = '', pageIndex = 1, pageSize = 10, sortB
           // Extract all unique plants from the returned data for the filter dropdown
           const plants = Array.from(new Set((json.data || []).map((p: SparePart) => String(p.plant)).filter(Boolean))) as string[];
           setAllPlants(plants);
+          
+          // Cache the successful result for 5 minutes
+          localStorageManager.set(cacheKey, {
+            data: json.data || [],
+            total: json.total || 0,
+            allPlants: plants
+          }, 5);
         })
         .catch((err) => {
           if (err.name !== 'AbortError') {

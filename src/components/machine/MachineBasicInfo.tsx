@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -181,11 +182,16 @@ export default function MachineBasicInfo({ data, onChange, machineType }: Machin
                   <div key={index} className="relative group">
                     <div className="aspect-square border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-gray-50">
                       {imagePreview[index] ? (
-                        <img
-                          src={imagePreview[index]}
-                          alt={`Machine image ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
+                        <div className="relative w-full h-full">
+                          <Image
+                            src={imagePreview[index]}
+                            alt={`Machine image ${index + 1}`}
+                            fill
+                            sizes="(max-width: 768px) 100vw, 33vw"
+                            className="object-cover"
+                            priority
+                          />
+                        </div>
                       ) : (
                         <div className="flex items-center justify-center h-full">
                           <ImageIcon className="h-8 w-8 text-gray-400" />

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -74,10 +75,13 @@ export default function MachineGeneralInfo({ machine }: MachineGeneralInfoProps)
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {machine.images.map((image, index) => (
                 <div key={index} className="aspect-video relative rounded-lg overflow-hidden bg-gray-100">
-                  <img
+                  <Image
                     src={image}
                     alt={`${machine.machineName} - Image ${index + 1}`}
-                    className="w-full h-full object-cover"
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    className="object-cover"
+                    priority={index < 2}
                   />
                 </div>
               ))}

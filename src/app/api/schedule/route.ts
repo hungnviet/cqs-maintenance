@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Machine from '@/models/Machine';
-import MachineType from '@/models/MachineType';
 
 // GET /api/schedule
 export async function GET(req: NextRequest) {
@@ -14,8 +13,8 @@ export async function GET(req: NextRequest) {
   const machineType = searchParams.get('machineType') || '';
   
   // Build filter query
-  const filter: any = {};
-  
+  const filter: Record<string, unknown> = {};
+
   if (plant) {
     filter.plant = { $regex: plant, $options: 'i' };
   }
@@ -42,7 +41,10 @@ export async function GET(req: NextRequest) {
     // Filter maintenance schedules by frequency and within current year
     const filteredMachines = machines.map(machine => ({
       ...machine,
-      maintenanceSchedule: machine.maintenanceSchedule.filter((schedule: any) => {
+      maintenanceSchedule: machine.maintenanceSchedule.filter((schedule: {
+        plannedDate: Date | string;
+        frequency: string;
+      }) => {
         const plannedDate = new Date(schedule.plannedDate);
         const isInCurrentYear = plannedDate >= startDate && plannedDate <= endDate;
         const matchesFrequency = schedule.frequency.toLowerCase() === frequency.toLowerCase();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +16,15 @@ interface ScheduleData {
   plannedDate: string;
 }
 
+interface Machine {
+  _id: string;
+  machineCode: string;
+  machineName: string;
+  machineType: string;
+  plant: string;
+  [key: string]: unknown;
+}
+
 const frequencies = [
   { value: 'Daily', label: 'Daily' },
   { value: 'Weekly', label: 'Weekly' },
@@ -29,7 +38,7 @@ export default function NewSchedulePage() {
   const router = useRouter();
   const machineCode = params.machineCode as string;
   
-  const [machine, setMachine] = useState<any>(null);
+  const [machine, setMachine] = useState<Machine | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
@@ -37,11 +46,7 @@ export default function NewSchedulePage() {
     { frequency: '', plannedDate: '' }
   ]);
 
-  useEffect(() => {
-    loadMachine();
-  }, [machineCode]);
-
-  const loadMachine = async () => {
+  const loadMachine = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getMachineDetail(machineCode);
@@ -51,13 +56,17 @@ export default function NewSchedulePage() {
         toast.error('Failed to load machine');
         router.push('/machines');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to load machine');
       router.push('/machines');
     } finally {
       setLoading(false);
     }
-  };
+  }, [machineCode, router]);
+
+  useEffect(() => {
+    loadMachine();
+  }, [loadMachine]);
 
   const addSchedule = () => {
     setSchedules(prev => [...prev, { frequency: '', plannedDate: '' }]);
@@ -90,7 +99,7 @@ export default function NewSchedulePage() {
       // Update machine's maintenance schedule
       const response = await updateMachineSchedule(machineCode, {
         schedules: validSchedules.map(s => ({
-          frequency: s.frequency,
+          frequency: s.frequency as 'Daily' | 'Weekly' | 'Monthly' | 'Half-Yearly' | 'Yearly',
           plannedDate: new Date(s.plannedDate),
           actualDate: null
         }))
@@ -102,7 +111,7 @@ export default function NewSchedulePage() {
       } else {
         toast.error('Failed to add schedules');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to add schedules');
     } finally {
       setSaving(false);

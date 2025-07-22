@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { getAllSchedules, ScheduleData } from '@/hooks/schedule';
 import { getAllMachineTypesForDropdown, MachineType } from '@/hooks/machine-types';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -10,7 +11,14 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
-export default function SchedulePage() {
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
+function SchedulePageContent() {
+  const searchParams = useSearchParams(); // This makes the page dynamic
+  
+  // Force dynamic rendering by accessing window object
+  const [isHydrated, setIsHydrated] = useState(false);
   const [schedules, setSchedules] = useState<ScheduleData[]>([]);
   const [machineTypes, setMachineTypes] = useState<MachineType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,26 +31,18 @@ export default function SchedulePage() {
   const debouncedPlantFilter = useDebounce(plantFilter, 500);
   const debouncedMachineCodeFilter = useDebounce(machineCodeFilter, 500);
 
-  useEffect(() => {
-    loadSchedules();
-  }, [frequency, debouncedPlantFilter, debouncedMachineCodeFilter, machineTypeFilter]);
-
-  useEffect(() => {
-    loadMachineTypes();
-  }, []);
-
-  const loadMachineTypes = async () => {
+  const loadMachineTypes = useCallback(async () => {
     try {
       const response = await getAllMachineTypesForDropdown();
       if (response.success) {
         setMachineTypes(response.data || []);
       }
-    } catch (error) {
-      console.error('Failed to load machine types:', error);
+    } catch {
+      console.error('Failed to load machine types');
     }
-  };
+  }, []);
 
-  const loadSchedules = async () => {
+  const loadSchedules = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getAllSchedules({
@@ -58,12 +58,45 @@ export default function SchedulePage() {
       } else {
         toast.error('Failed to load schedules');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to load schedules');
     } finally {
       setLoading(false);
     }
-  };
+  }, [frequency, debouncedPlantFilter, debouncedMachineCodeFilter, machineTypeFilter]);
+
+  useEffect(() => {
+    // This will only run on the client, forcing dynamic behavior
+    if (typeof window !== 'undefined') {
+      setIsHydrated(true);
+    }
+  }, []);
+
+  // Use searchParams to initialize from URL (makes it truly dynamic)
+  useEffect(() => {
+    if (searchParams && isHydrated) {
+      const urlFrequency = searchParams.get('frequency') as 'half-yearly' | 'yearly' || 'yearly';
+      const urlPlant = searchParams.get('plant') || '';
+      const urlMachineCode = searchParams.get('machineCode') || '';
+      const urlMachineType = searchParams.get('machineType') || 'all';
+      
+      setFrequency(urlFrequency);
+      setPlantFilter(urlPlant);
+      setMachineCodeFilter(urlMachineCode);
+      setMachineTypeFilter(urlMachineType);
+    }
+  }, [searchParams, isHydrated]);
+
+  useEffect(() => {
+    if (isHydrated) {
+      loadMachineTypes();
+      loadSchedules();
+    }
+  }, [loadMachineTypes, loadSchedules, isHydrated]);
+
+  if (!isHydrated) {
+    return <div>Loading...</div>;
+  }
 
   const generateMonthColumns = () => {
     if (!dateRange) return [];
@@ -96,18 +129,6 @@ export default function SchedulePage() {
       const date = new Date(type === 'plan' ? schedule.plannedDate : schedule.actualDate || '');
       return date >= weekStart && date <= weekEnd;
     });
-  };
-
-  const getStatusColor = (schedule: any) => {
-    if (schedule.actualDate) {
-      return 'bg-green-100 text-green-800'; // Completed
-    }
-    const planned = new Date(schedule.plannedDate);
-    const now = new Date();
-    if (planned < now) {
-      return 'bg-red-100 text-red-800'; // Overdue
-    }
-    return 'bg-yellow-100 text-yellow-800'; // Upcoming
   };
 
   const months = generateMonthColumns();
@@ -276,5 +297,13 @@ export default function SchedulePage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function SchedulePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SchedulePageContent />
+    </Suspense>
   );
 } 

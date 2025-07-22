@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,11 +26,7 @@ export default function MachineTypeDetailPage() {
   const [editMode, setEditMode] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    loadMachineType();
-  }, [machineTypeCode]);
-
-  const loadMachineType = async () => {
+  const loadMachineType = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getMachineTypeDetail(machineTypeCode);
@@ -41,12 +37,17 @@ export default function MachineTypeDetailPage() {
         router.push('/machine-types');
       }
     } catch (error) {
+      console.error('Error loading machine type:', error);
       toast.error('Failed to load machine type');
       router.push('/machine-types');
     } finally {
       setLoading(false);
     }
-  };
+  }, [machineTypeCode, router]);
+
+  useEffect(() => {
+    loadMachineType();
+  }, [loadMachineType]);
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this machine type? This action cannot be undone.')) {
@@ -59,6 +60,7 @@ export default function MachineTypeDetailPage() {
       toast.success('Machine type deleted successfully');
       router.push('/machine-types');
     } catch (error) {
+      console.error('Error deleting machine type:', error);
       toast.error('Failed to delete machine type');
     } finally {
       setDeleting(false);

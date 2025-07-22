@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Download, Printer } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import MaintenanceFormViewer from '@/components/machine/MaintenanceFormViewer';
 
@@ -49,11 +49,7 @@ export default function MaintenanceViewPage() {
   const [form, setForm] = useState<CompletedForm | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadForm();
-  }, [formId]);
-
-  const loadForm = async () => {
+  const loadForm = useCallback(async () => {
     if (!formId) {
       toast.error('Form ID not provided');
       router.push(`/machines/${machineCode}`);
@@ -76,13 +72,17 @@ export default function MaintenanceViewPage() {
         toast.error('Failed to load maintenance form');
         router.push(`/machines/${machineCode}`);
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to load maintenance form');
       router.push(`/machines/${machineCode}`);
     } finally {
       setLoading(false);
     }
-  };
+  }, [formId, router, machineCode]);
+
+  useEffect(() => {
+    loadForm();
+  }, [loadForm]);
   
   const handleDownload = async () => {
     // Implementation for PDF download would go here

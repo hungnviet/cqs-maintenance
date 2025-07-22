@@ -29,7 +29,7 @@ export default function UserList() {
       } else {
         setError(data.error || 'Failed to fetch users');
       }
-    } catch (error) {
+    } catch {
       setError('An error occurred while fetching users');
     } finally {
       setLoading(false);

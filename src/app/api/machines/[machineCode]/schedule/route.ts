@@ -4,12 +4,12 @@ import Machine from '@/models/Machine';
 
 export async function GET(
   req: NextRequest, 
-  { params }: { params: { machineCode: string } }
+  { params }: { params: Promise<{ machineCode: string }> }
 ) {
   await dbConnect();
   
   try {
-    const { machineCode } = params;
+    const { machineCode } = await params;
     
     const machine = await Machine.findOne({ machineCode })
       .select('maintenanceSchedule')
@@ -24,7 +24,12 @@ export async function GET(
 
     // Calculate status for each schedule item
     const now = new Date();
-    const scheduleWithStatus = machine.maintenanceSchedule.map((schedule: any) => {
+    const scheduleWithStatus = machine.maintenanceSchedule.map((schedule: {
+      actualDate?: Date;
+      plannedDate: Date;
+      _id: string;
+      toObject: () => Record<string, unknown>;
+    }) => {
       let status = 'upcoming';
       
       if (schedule.actualDate) {
@@ -53,12 +58,12 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest, 
-  { params }: { params: { machineCode: string } }
+  { params }: { params: Promise<{ machineCode: string }> }
 ) {
   await dbConnect();
   
   try {
-    const { machineCode } = params;
+    const { machineCode } = await params;
     const updateData = await req.json();
     
     const machine = await Machine.findOne({ machineCode });
@@ -73,7 +78,7 @@ export async function PUT(
     // Update specific schedule item
     if (updateData.scheduleId) {
       const scheduleIndex = machine.maintenanceSchedule.findIndex(
-        (s: any) => s._id.toString() === updateData.scheduleId
+        (s: { _id: { toString: () => string } }) => s._id.toString() === updateData.scheduleId
       );
       
       if (scheduleIndex !== -1) {
@@ -102,12 +107,12 @@ export async function PUT(
 
 export async function POST(
   req: NextRequest, 
-  { params }: { params: { machineCode: string } }
+  { params }: { params: Promise<{ machineCode: string }> }
 ) {
   await dbConnect();
   
   try {
-    const { machineCode } = params;
+    const { machineCode } = await params;
     const { schedules } = await req.json();
     
     const machine = await Machine.findOne({ machineCode });
@@ -120,7 +125,11 @@ export async function POST(
     }
 
     // Add new schedules to the machine
-    const newSchedules = schedules.map((schedule: any) => ({
+    const newSchedules = schedules.map((schedule: {
+      frequency: string;
+      plannedDate: string;
+      actualDate?: string;
+    }) => ({
       frequency: schedule.frequency,
       plannedDate: new Date(schedule.plannedDate),
       actualDate: schedule.actualDate ? new Date(schedule.actualDate) : null
@@ -143,12 +152,12 @@ export async function POST(
 
 export async function DELETE(
   req: NextRequest, 
-  { params }: { params: { machineCode: string } }
+  { params }: { params: Promise<{ machineCode: string }> }
 ) {
   await dbConnect();
   
   try {
-    const { machineCode } = params;
+    const { machineCode } = await params;
     const { searchParams } = new URL(req.url);
     const scheduleId = searchParams.get('scheduleId');
     
@@ -170,7 +179,7 @@ export async function DELETE(
 
     // Remove the schedule from the array
     machine.maintenanceSchedule = machine.maintenanceSchedule.filter(
-      (schedule: any) => schedule._id.toString() !== scheduleId
+      (schedule: { _id: { toString: () => string } }) => schedule._id.toString() !== scheduleId
     );
     
     await machine.save();

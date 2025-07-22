@@ -4,12 +4,12 @@ import CompletedMaintenanceForm from '@/models/CompletedMaintenanceForm';
 
 export async function GET(
   req: NextRequest, 
-  { params }: { params: { formId: string } }
+  { params }: { params: Promise<{ formId: string }> }
 ) {
   await dbConnect();
   
   try {
-    const { formId } = params;
+    const { formId } = await params;
     
     const form = await CompletedMaintenanceForm.findById(formId)
       .populate({

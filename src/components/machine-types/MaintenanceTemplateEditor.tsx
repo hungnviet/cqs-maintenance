@@ -4,11 +4,9 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Trash2, Plus, Edit } from 'lucide-react';
+import { Trash2, Plus } from 'lucide-react';
 import { RequirementGroup, Requirement } from '@/hooks/machine-types';
 
 interface MaintenanceTemplateEditorProps {
@@ -163,7 +161,7 @@ export default function MaintenanceTemplateEditor({
               {group.requirements.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <p>No requirements in this group yet.</p>
-                  <p className="text-sm">Click "Add Requirement" to add the first requirement.</p>
+                  <p className="text-sm">Click &quot; Add Requirement &quot; to add the first requirement.</p>
                 </div>
               ) : (
                 <Accordion type="multiple" className="w-full">

@@ -1,6 +1,5 @@
 import './globals.css';
 import MainNavbar from '@/components/MainNavbar';
-import SubNavbar from '@/components/SubNavbar';
 import { Toaster } from '@/components/ui/sonner';
 
 export const metadata = {

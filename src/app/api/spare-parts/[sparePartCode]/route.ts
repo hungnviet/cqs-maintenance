@@ -4,13 +4,13 @@ import SparePart from '@/models/SparePart';
 import { uploadImageToCloudinary } from '@/lib/cloudinary';
 
 // PUT /api/spare-parts/[sparePartCode]
-export async function PUT(req: NextRequest, context: { params: { sparePartCode: string } }) {
+export async function PUT(req: NextRequest, context: { params: Promise<{ sparePartCode: string }> }) {
   await dbConnect();
   try {
     const { params } = context;
     const { sparePartCode } = await params;
     // Support both JSON and multipart/form-data
-    let updateData: any = {};
+    let updateData: Record<string, unknown> = {};
     let imageUrl = '';
     const contentType = req.headers.get('content-type') || '';
     if (contentType.includes('multipart/form-data')) {
@@ -34,7 +34,7 @@ export async function PUT(req: NextRequest, context: { params: { sparePartCode: 
 }
 
 // DELETE /api/spare-parts/[sparePartCode]
-export async function DELETE(req: NextRequest, context: { params: { sparePartCode: string } }) {
+export async function DELETE(req: NextRequest, context: { params: Promise<{ sparePartCode: string }> }) {
   await dbConnect();
   try {
     const { params } = context;

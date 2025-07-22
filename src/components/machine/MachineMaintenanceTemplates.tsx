@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getMachineMaintenanceTemplates } from '@/hooks/machine';
 import { toast } from 'sonner';
@@ -17,12 +18,7 @@ export default function MachineMaintenanceTemplates({ machineCode, machine }: Ma
   const [templates, setTemplates] = useState<MaintenanceTemplate[]>([]);
   const [loading, setLoading] = useState(true);
 
-
-  useEffect(() => {
-    loadTemplates();
-  }, [machineCode]);
-
-  const loadTemplates = async () => {
+  const loadTemplates = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getMachineMaintenanceTemplates(machineCode);
@@ -31,12 +27,16 @@ export default function MachineMaintenanceTemplates({ machineCode, machine }: Ma
       } else {
         toast.error('Failed to load maintenance templates');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to load maintenance templates');
     } finally {
       setLoading(false);
     }
-  };
+  }, [machineCode]);
+
+  useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
 
 
   const renderMaintenanceForm = (template: MaintenanceTemplate) => {
@@ -65,13 +65,16 @@ export default function MachineMaintenanceTemplates({ machineCode, machine }: Ma
     }
 
     const imageElements = images.map((imageUrl, index) => (
-      <div key={index} className="w-full h-48 bg-gray-100 rounded overflow-hidden">
-        <img 
+      <div key={index} className="w-full h-48 bg-gray-100 rounded overflow-hidden relative">
+        <Image 
           src={imageUrl} 
           alt={`Machine image ${index + 1}`}
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBzdHJva2U9IiM2NjY2NjYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=';
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          className="object-cover"
+          onError={() => {
+            // We can't directly set src with Next.js Image, so we'll handle fallback through state if needed
+            // This is a placeholder for error handling
           }}
         />
       </div>

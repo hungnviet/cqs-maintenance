@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const pageSize = parseInt(searchParams.get('pageSize') || '10', 10);
   const getAll = searchParams.get('getAll') === 'true'; // Add this for dropdown
   
-  const filter: any = {};
+  const filter: Record<string, unknown> = {};
   if (search) {
     filter.$or = [
       { typeName: { $regex: search, $options: 'i' } },

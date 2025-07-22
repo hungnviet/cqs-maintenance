@@ -1,5 +1,6 @@
 'use client';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import SparePartsTable from '@/components/spare-parts/SparePartsTable';
 import { useSpareParts } from '@/hooks/spare-parts';
 import SearchBar from '@/components/spare-parts/SearchBar';
@@ -7,7 +8,14 @@ import SparePartForm from '@/components/spare-parts/Form';
 import { Button } from '@/components/ui/button';
 import type { SparePart } from '@/hooks/spare-parts';
 
-export default function SparePartsPage() {
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
+function SparePartsPageContent() {
+  const searchParams = useSearchParams(); // This makes the page dynamic
+  
+  // Force dynamic rendering by accessing window object
+  const [isHydrated, setIsHydrated] = useState(false);
   const [search, setSearch] = useState('');
   const [pageIndex, setPageIndex] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -26,6 +34,36 @@ export default function SparePartsPage() {
     setPageIndex(1);
     setSearch(value);
   }, []);
+  
+  useEffect(() => {
+    // This will only run on the client, forcing dynamic behavior
+    if (typeof window !== 'undefined') {
+      setIsHydrated(true);
+    }
+  }, []);
+  
+  // Use searchParams to initialize from URL (makes it truly dynamic)
+  useEffect(() => {
+    if (searchParams && isHydrated) {
+      const urlSearch = searchParams.get('search') || '';
+      const urlPage = parseInt(searchParams.get('page') || '1');
+      const urlPageSize = parseInt(searchParams.get('pageSize') || '10');
+      const urlSortBy = searchParams.get('sortBy') || 'inventoryQuantity';
+      const urlSortOrder = searchParams.get('sortOrder') as 'asc' | 'desc' || 'asc';
+      const urlPlant = searchParams.get('plant') || '';
+      
+      setSearch(urlSearch);
+      setPageIndex(urlPage);
+      setPageSize(urlPageSize);
+      setSortBy(urlSortBy);
+      setSortOrder(urlSortOrder);
+      setPlant(urlPlant);
+    }
+  }, [searchParams, isHydrated]);
+
+  if (!isHydrated) {
+    return <div>Loading...</div>;
+  }
 
   const handleSortChange = (field: string) => {
     if (sortBy === field) {
@@ -138,5 +176,13 @@ export default function SparePartsPage() {
         onSubmit={handleFormSubmit}
       />
     </div>
+  );
+}
+
+export default function SparePartsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SparePartsPageContent />
+    </Suspense>
   );
 } 

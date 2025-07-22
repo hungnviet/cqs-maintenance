@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,9 +10,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Calendar, Plus, Edit, Trash2, FileText, Eye } from 'lucide-react';
+import { ArrowLeft, Calendar, Plus, Trash2, FileText, Eye } from 'lucide-react';
 import { toast } from 'sonner';
-import { getMachineDetail, getMachineSchedule, updateMachineSchedule, createMachineSchedule, deleteMachineSchedule } from '@/hooks/machine';
+import { getMachineDetail, getMachineSchedule, createMachineSchedule, deleteMachineSchedule } from '@/hooks/machine';
 
 interface Schedule {
   _id: string;
@@ -42,7 +42,11 @@ export default function SchedulePage() {
   const router = useRouter();
   const machineCode = params.machineCode as string;
   
-  const [machine, setMachine] = useState<any>(null);
+  const [machine, setMachine] = useState<{
+    machineName: string;
+    machineCode: string;
+    [key: string]: unknown;
+  } | null>(null);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewModal, setShowNewModal] = useState(false);
@@ -54,11 +58,7 @@ export default function SchedulePage() {
     count: 1
   });
 
-  useEffect(() => {
-    loadData();
-  }, [machineCode]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -73,12 +73,16 @@ export default function SchedulePage() {
       if (scheduleResponse.success) {
         setSchedules(scheduleResponse.data || []);
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
-  };
+  }, [machineCode]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -103,7 +107,7 @@ export default function SchedulePage() {
 
   const generateScheduleDates = (startDate: string, frequency: string, count: number) => {
     const dates = [];
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     
     for (let i = 0; i < count; i++) {
       dates.push(new Date(currentDate));
@@ -150,7 +154,7 @@ export default function SchedulePage() {
       );
       
       const scheduleItems = scheduleDates.map(date => ({
-        frequency: newSchedule.frequency,
+        frequency: newSchedule.frequency as 'Daily' | 'Weekly' | 'Monthly' | 'Half-Yearly' | 'Yearly',
         plannedDate: date.toISOString(),
         actualDate: null
       }));
@@ -165,7 +169,7 @@ export default function SchedulePage() {
       } else {
         toast.error('Failed to create schedules');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to create schedules');
     } finally {
       setSaving(false);
@@ -188,7 +192,7 @@ export default function SchedulePage() {
       } else {
         toast.error('Failed to delete schedule');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete schedule');
     }
   };

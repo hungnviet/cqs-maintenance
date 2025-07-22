@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 interface ImagePreviewProps {
@@ -15,18 +16,28 @@ export default function ImagePreview({ src, alt = '', smallClassName = 'w-16 h-1
 
   return (
     <>
-      <img
+      <Image
         src={src}
         alt={alt}
+        width={64}
+        height={64}
         className={smallClassName}
         onClick={() => setOpen(true)}
+        style={{ cursor: 'pointer' }}
       />
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="flex items-center justify-center !max-w-none w-auto bg-transparent shadow-none p-0">
           <DialogTitle asChild>
             <span className="sr-only">Image preview: {alt}</span>
           </DialogTitle>
-          <img src={src} alt={alt} className={largeClassName} />
+          <Image 
+            src={src} 
+            alt={alt} 
+            width={800}
+            height={600}
+            className={largeClassName}
+            style={{ width: 'auto', height: 'auto', maxWidth: '60vw', maxHeight: '80vh' }}
+          />
         </DialogContent>
       </Dialog>
     </>

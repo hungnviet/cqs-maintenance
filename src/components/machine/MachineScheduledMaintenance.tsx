@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,13 +10,21 @@ import { Calendar, Clock, CheckCircle, AlertTriangle, FileText, Plus } from 'luc
 import { getMachineSchedule } from '@/hooks/machine';
 import { toast } from 'sonner';
 
+interface CompletedForm {
+  _id: string;
+  frequency: string;
+  machineId: string;
+  date: string;
+  [key: string]: unknown;
+}
+
 interface MachineSchedule {
   _id?: string;
   frequency: 'Daily' | 'Weekly' | 'Monthly' | 'Half-Yearly' | 'Yearly';
   plannedDate: string;
   actualDate?: string | null;
   status: 'upcoming' | 'late' | 'completed';
-  completedForm?: any;
+  completedForm?: CompletedForm;
 }
 
 interface MachineScheduledMaintenanceProps {
@@ -28,11 +36,7 @@ export default function MachineScheduledMaintenance({ machineCode }: MachineSche
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    loadSchedules();
-  }, [machineCode]);
-
-  const loadSchedules = async () => {
+  const loadSchedules = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getMachineSchedule(machineCode);
@@ -41,12 +45,16 @@ export default function MachineScheduledMaintenance({ machineCode }: MachineSche
       } else {
         toast.error('Failed to load maintenance schedule');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to load maintenance schedule');
     } finally {
       setLoading(false);
     }
-  };
+  }, [machineCode]);
+
+  useEffect(() => {
+    loadSchedules();
+  }, [loadSchedules]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

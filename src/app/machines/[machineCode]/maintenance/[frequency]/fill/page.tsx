@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Save, Camera } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { getMachineDetail, getMachineMaintenanceTemplates } from '@/hooks/machine';
 import MaintenanceFormFiller from '@/components/machine/MaintenanceFormFiller';
@@ -44,11 +43,7 @@ export default function MaintenanceFillPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [machineCode, frequency]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -87,14 +82,37 @@ export default function MaintenanceFillPage() {
         router.push(`/machines/${machineCode}`);
       }
     } catch (error) {
+      console.error('Error loading data:', error);
       toast.error('Failed to load data');
       router.push(`/machines/${machineCode}`);
     } finally {
       setLoading(false);
     }
-  };
+  }, [scheduleId, machineCode, frequency, router]);
 
-  const handleSaveForm = async (formData: any) => {
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleSaveForm = async (formData: {
+    date: string;
+    maintenanceStartTime: string;
+    maintenanceEndTime: string;
+    maintenanceOperatorNumber: string;
+    preparedBy: string;
+    checkedBy: string;
+    approvedBy: string;
+    remarks: string;
+    groups: {
+      groupTitle: string;
+      requirements: {
+        titleEng: string;
+        titleVn: string;
+        accepted: boolean;
+        note: string;
+      }[];
+    }[];
+  }) => {
     try {
       setSaving(true);
       
@@ -128,6 +146,7 @@ export default function MaintenanceFillPage() {
         toast.error('Failed to save maintenance form');
       }
     } catch (error) {
+      console.error('Error saving maintenance form:', error);
       toast.error('Failed to save maintenance form');
     } finally {
       setSaving(false);

@@ -20,7 +20,7 @@ export default function MachineTypeSelection({ selectedType, onSelect }: Machine
 
   useEffect(() => {
     loadMachineTypes();
-  }, []);
+  }, []); // This will re-run when component key changes
 
   const loadMachineTypes = async () => {
     try {
@@ -31,7 +31,7 @@ export default function MachineTypeSelection({ selectedType, onSelect }: Machine
       } else {
         toast.error('Failed to load machine types');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to load machine types');
     } finally {
       setLoading(false);

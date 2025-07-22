@@ -1,3 +1,5 @@
+import { localStorageManager, CACHE_KEYS, generateCacheKey } from '@/lib/localStorage';
+
 // Types
 export interface MachineType {
   _id: string;
@@ -59,26 +61,99 @@ export async function getAllMachineTypes(params?: {
   search?: string;
   pageIndex?: number;
   pageSize?: number;
-}) {
+}, forceRefresh: boolean = false) {
+  const cacheKey = generateCacheKey(CACHE_KEYS.MACHINE_TYPES, params || {});
+  
+  // Check cache first unless force refresh
+  if (!forceRefresh) {
+    const cachedData = localStorageManager.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+  }
+
   const searchParams = new URLSearchParams();
   if (params?.search) searchParams.append('search', params.search);
   if (params?.pageIndex !== undefined) searchParams.append('pageIndex', params.pageIndex.toString());
   if (params?.pageSize !== undefined) searchParams.append('pageSize', params.pageSize.toString());
   
-  const res = await fetch(`/api/machine-types?${searchParams}`);
+  // Add cache busting
+  searchParams.append('_t', Date.now().toString());
+  
+  const res = await fetch(`/api/machine-types?${searchParams}`, {
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  });
   if (!res.ok) throw new Error('Failed to fetch machine types');
-  return res.json();
+  
+  const data = await res.json();
+  
+  // Cache the result for 10 minutes (machine types change less frequently)
+  if (data.success) {
+    localStorageManager.set(cacheKey, data, 10);
+  }
+  
+  return data;
 }
 
-export async function getAllMachineTypesForDropdown() {
-  const res = await fetch('/api/machine-types?getAll=true');
+export async function getAllMachineTypesForDropdown(forceRefresh: boolean = false) {
+  const cacheKey = 'machine_types_dropdown';
+  
+  // Check cache first unless force refresh
+  if (!forceRefresh) {
+    const cachedData = localStorageManager.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+  }
+
+  const res = await fetch(`/api/machine-types?getAll=true&_t=${Date.now()}`, {
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  });
   if (!res.ok) throw new Error('Failed to fetch machine types for dropdown');
-  return res.json();
+  
+  const data = await res.json();
+  
+  // Cache the result for 15 minutes
+  if (data.success) {
+    localStorageManager.set(cacheKey, data, 15);
+  }
+  
+  return data;
 }
 
-export async function getMachineTypeDetail(machineTypeCode: string) {
-  const res = await fetch(`/api/machine-types/${machineTypeCode}`);
+export async function getMachineTypeDetail(machineTypeCode: string, forceRefresh: boolean = false) {
+  const cacheKey = CACHE_KEYS.MACHINE_TYPE_DETAIL(machineTypeCode);
+  
+  // Check cache first unless force refresh
+  if (!forceRefresh) {
+    const cachedData = localStorageManager.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+  }
+
+  const res = await fetch(`/api/machine-types/${machineTypeCode}?_t=${Date.now()}`, {
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  });
   if (!res.ok) throw new Error('Failed to fetch machine type detail');
+  
+  const data = await res.json();
+  
+  // Cache the result for 15 minutes (machine type details change infrequently)
+  if (data.success) {
+    localStorageManager.set(cacheKey, data, 15);
+  }
+  
+  return data;
   return res.json();
 }
 

@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { 
   MachineTypeData, 
@@ -208,7 +207,7 @@ export default function MachineTypeForm({ machineType, mode }: MachineTypeFormPr
 
         <TabsContent value="maintenance" className="space-y-4">
           <div className="space-y-6">
-            {formData.templates.map((template, index) => (
+            {formData.templates.map((template) => (
               <Card key={template.frequency}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
