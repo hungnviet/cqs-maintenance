@@ -8,7 +8,6 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 // Force dynamic rendering
@@ -122,13 +121,71 @@ function SchedulePageContent() {
   };
 
   const getScheduleForMonthWeek = (machine: ScheduleData, month: number, year: number, week: number, type: 'plan' | 'actual') => {
-    const weekStart = new Date(year, month, (week - 1) * 7 + 1);
-    const weekEnd = new Date(year, month, week * 7);
+    // Calculate week ranges according to user requirements:
+    // Week 1: 1-7, Week 2: 8-15, Week 3: 16-22, Week 4: 23-end of month
+    let weekStart: number, weekEnd: number;
+    const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
     
-    return machine.maintenanceSchedule.filter(schedule => {
-      const date = new Date(type === 'plan' ? schedule.plannedDate : schedule.actualDate || '');
-      return date >= weekStart && date <= weekEnd;
+    switch (week) {
+      case 1:
+        weekStart = 1;
+        weekEnd = 7;
+        break;
+      case 2:
+        weekStart = 8;
+        weekEnd = 15;
+        break;
+      case 3:
+        weekStart = 16;
+        weekEnd = 22;
+        break;
+      case 4:
+        weekStart = 23;
+        weekEnd = lastDayOfMonth;
+        break;
+      default:
+        return [];
+    }
+    
+    const filteredSchedules = machine.maintenanceSchedule.filter(schedule => {
+      if (type === 'plan') {
+        const date = new Date(schedule.plannedDate);
+        const dayOfMonth = date.getDate();
+        const isInRange = date.getMonth() === month && date.getFullYear() === year && 
+                         dayOfMonth >= weekStart && dayOfMonth <= weekEnd;
+        
+        // Debug logging for July 2025
+        if (month === 6 && year === 2025) {
+          console.log(`Plan - Week ${week} (${weekStart}-${weekEnd}):`, {
+            plannedDate: schedule.plannedDate,
+            dayOfMonth,
+            isInRange
+          });
+        }
+        
+        return isInRange;
+      } else {
+        // For actual, only include schedules that have an actualDate
+        if (!schedule.actualDate) return false;
+        const date = new Date(schedule.actualDate);
+        const dayOfMonth = date.getDate();
+        const isInRange = date.getMonth() === month && date.getFullYear() === year && 
+                         dayOfMonth >= weekStart && dayOfMonth <= weekEnd;
+        
+        // Debug logging for July 2025
+        if (month === 6 && year === 2025) {
+          console.log(`Actual - Week ${week} (${weekStart}-${weekEnd}):`, {
+            actualDate: schedule.actualDate,
+            dayOfMonth,
+            isInRange
+          });
+        }
+        
+        return isInRange;
+      }
     });
+    
+    return filteredSchedules;
   };
 
   const months = generateMonthColumns();
@@ -214,13 +271,13 @@ function SchedulePageContent() {
                     <th className="border border-gray-300 p-2 text-left font-semibold">Machine</th>
                     <th className="border border-gray-300 p-2 text-left font-semibold">Type</th>
                     {months.map(month => (
-                      <th key={month.key} className="border border-gray-300 p-1 text-center font-semibold min-w-[120px]">
-                        <div>{month.name}</div>
-                        <div className="grid grid-cols-4 gap-1 mt-1">
-                          <div className="text-xs">W1</div>
-                          <div className="text-xs">W2</div>
-                          <div className="text-xs">W3</div>
-                          <div className="text-xs">W4</div>
+                      <th key={month.key} className="border border-gray-300  text-center font-semibold min-w-[80px]">
+                        <div className="text-xs">{month.name}</div>
+                        <div className="grid grid-cols-4 border-t border-gray-200">
+                          <div className="text-xs py-1 border-r border-gray-200">1</div>
+                          <div className="text-xs py-1 border-r border-gray-200">2</div>
+                          <div className="text-xs py-1 border-r border-gray-200">3</div>
+                          <div className="text-xs py-1">4</div>
                         </div>
                       </th>
                     ))}
@@ -231,28 +288,32 @@ function SchedulePageContent() {
                     <React.Fragment key={machine._id}>
                       {/* Plan Row */}
                       <tr className="hover:bg-gray-50">
-                        <td className="border border-gray-300 p-2 font-medium" rowSpan={2}>
+                        <td className="border border-gray-300  font-medium" rowSpan={2}>
                           {index + 1}
                         </td>
-                        <td className="border border-gray-300 p-2" rowSpan={2}>
+                        <td className="border border-gray-300 " rowSpan={2}>
                           <div>
-                            <div className="font-medium">{machine.machineName}</div>
-                            <div className="text-sm text-gray-500">{machine.machineCode}</div>
-                            <div className="text-xs text-gray-400">{machine.plant}</div>
+                            <div className="font-medium text-sm">{machine.machineName}</div>
                           </div>
                         </td>
-                        <td className="border border-gray-300 p-2 bg-blue-50">
-                          <Badge variant="outline" className="text-blue-700">PLAN</Badge>
+                        <td className="border border-gray-300  bg-blue-50">
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-blue-700 font-medium">PLAN</span>
+                          </div>
                         </td>
                         {months.map(month => (
-                          <td key={`plan-${month.key}`} className="border border-gray-300 p-1">
-                            <div className="grid grid-cols-4 gap-1">
+                          <td key={`plan-${month.key}`} className="border border-gray-300">
+                            <div className="grid grid-cols-4">
                               {[1, 2, 3, 4].map(week => {
                                 const schedules = getScheduleForMonthWeek(machine, month.month, month.year, week, 'plan');
                                 return (
-                                  <div key={week} className="h-6 flex items-center justify-center">
+                                  <div key={week} className={`h-6 flex items-center justify-center ${week < 4 ? 'border-r border-gray-200' : ''}`}>
                                     {schedules.map(schedule => (
-                                      <div key={schedule._id} className="w-2 h-2 bg-blue-500 rounded-full" title={`Planned: ${new Date(schedule.plannedDate).toLocaleDateString()}`}></div>
+                                      <div 
+                                        key={schedule._id} 
+                                        className="w-0 h-0 border-l-[8px] border-r-[8px] border-b-[10px] border-l-transparent border-r-transparent border-b-blue-500"
+                                        title={`Planned: ${new Date(schedule.plannedDate).toLocaleDateString()}`}
+                                      ></div>
                                     ))}
                                   </div>
                                 );
@@ -264,21 +325,23 @@ function SchedulePageContent() {
                       
                       {/* Actual Row */}
                       <tr className="hover:bg-gray-50">
-                        <td className="border border-gray-300 p-2 bg-green-50">
-                          <Badge variant="outline" className="text-green-700">ACTUAL</Badge>
+                        <td className="border border-gray-300  bg-green-50">
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-green-700 font-medium">ACTUAL</span>
+                          </div>
                         </td>
                         {months.map(month => (
-                          <td key={`actual-${month.key}`} className="border border-gray-300 p-1">
-                            <div className="grid grid-cols-4 gap-1">
+                          <td key={`actual-${month.key}`} className="border border-gray-300">
+                            <div className="grid grid-cols-4">
                               {[1, 2, 3, 4].map(week => {
                                 const schedules = getScheduleForMonthWeek(machine, month.month, month.year, week, 'actual');
                                 return (
-                                  <div key={week} className="h-6 flex items-center justify-center">
+                                  <div key={week} className={`h-6 flex items-center justify-center ${week < 4 ? 'border-r border-gray-200' : ''}`}>
                                     {schedules.map(schedule => (
                                       <div 
                                         key={schedule._id} 
-                                        className={`w-2 h-2 rounded-full ${schedule.actualDate ? 'bg-green-500' : 'bg-gray-300'}`}
-                                        title={schedule.actualDate ? `Completed: ${new Date(schedule.actualDate).toLocaleDateString()}` : 'Not completed'}
+                                        className="w-4 h-4 bg-green-500"
+                                        title={`Completed: ${new Date(schedule.actualDate!).toLocaleDateString()}`}
                                       ></div>
                                     ))}
                                   </div>

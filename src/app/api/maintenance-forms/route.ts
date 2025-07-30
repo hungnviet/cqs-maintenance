@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
             maintenanceForms: completedForm._id
           },
           $set: {
-            'maintenanceSchedule.$[elem].actualDate': new Date(),
+            'maintenanceSchedule.$[elem].actualDate': completedForm.date,
             'maintenanceSchedule.$[elem].completedForm': completedForm._id
           }
         },
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
             maintenanceForms: completedForm._id
           },
           $set: {
-            'maintenanceSchedule.$[elem].actualDate': new Date(),
+            'maintenanceSchedule.$[elem].actualDate': completedForm.date,
             'maintenanceSchedule.$[elem].completedForm': completedForm._id
           }
         },

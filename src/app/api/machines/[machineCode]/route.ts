@@ -74,13 +74,45 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ mach
     }
     // Remove machineCode from update
     delete machineData.machineCode;
+    
     session.startTransaction();
+    
+    // Get the current machine to check if machineType is changing
+    const currentMachine = await Machine.findOne({ machineCode }).session(session);
+    if (!currentMachine) {
+      await session.abortTransaction();
+      return NextResponse.json({ success: false, error: 'Machine not found' }, { status: 404 });
+    }
+    
+    // Check if machineType is changing
+    const oldMachineTypeId = currentMachine.machineType;
+    const newMachineTypeId = machineData.machineType;
+    
     const machine = await Machine.findOneAndUpdate(
       { machineCode },
       machineData,
       { new: true, session }
     );
+    
     if (!machine) throw new Error('Machine not found');
+    
+    // If machineType changed, update the counters
+    if (oldMachineTypeId.toString() !== newMachineTypeId.toString()) {
+      // Decrement old machine type
+      await MachineType.findByIdAndUpdate(
+        oldMachineTypeId,
+        { $inc: { totalMachines: -1 } },
+        { session }
+      );
+      
+      // Increment new machine type
+      await MachineType.findByIdAndUpdate(
+        newMachineTypeId,
+        { $inc: { totalMachines: 1 } },
+        { session }
+      );
+    }
+    
     const upsertedTemplates = [];
     for (const tmpl of templates) {
       const filter = { machine: machine._id, frequency: tmpl.frequency };
@@ -101,10 +133,39 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ mach
 // DELETE /api/machines/[machineCode]
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ machineCode: string }> }) {
   await dbConnect();
-  const { machineCode } = await params;
-  const machine = await Machine.findOne({ machineCode });
-  if (!machine) return NextResponse.json({ success: false, error: 'Machine not found' }, { status: 404 });
-  await Machine.findByIdAndDelete(machine._id);
-  await MachineMaintenanceFormTemplate.deleteMany({ machine: machine._id });
-  return NextResponse.json({ success: true });
+  const session = await mongoose.startSession();
+  
+  try {
+    const { machineCode } = await params;
+    
+    session.startTransaction();
+    
+    const machine = await Machine.findOne({ machineCode }).session(session);
+    if (!machine) {
+      await session.abortTransaction();
+      return NextResponse.json({ success: false, error: 'Machine not found' }, { status: 404 });
+    }
+    
+    // Store the machineType ID before deleting the machine
+    const machineTypeId = machine.machineType;
+    
+    // Delete the machine and its related templates
+    await Machine.findByIdAndDelete(machine._id).session(session);
+    await MachineMaintenanceFormTemplate.deleteMany({ machine: machine._id }).session(session);
+    
+    // Decrement totalMachines count in the MachineType
+    await MachineType.findByIdAndUpdate(
+      machineTypeId,
+      { $inc: { totalMachines: -1 } },
+      { session }
+    );
+    
+    await session.commitTransaction();
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    await session.abortTransaction();
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : error }, { status: 500 });
+  } finally {
+    session.endSession();
+  }
 }

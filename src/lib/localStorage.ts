@@ -97,6 +97,7 @@ export const CACHE_KEYS = {
   MACHINES: 'machines',
   MACHINE_TYPES: 'machine_types',
   SPARE_PARTS: 'spare_parts',
+  SCHEDULES: 'schedules',
   MACHINE_DETAIL: (code: string) => `machine_detail_${code}`,
   MACHINE_TYPE_DETAIL: (code: string) => `machine_type_detail_${code}`,
   MACHINE_SCHEDULE: (code: string) => `machine_schedule_${code}`,
@@ -134,6 +135,13 @@ export const invalidateCache = {
     if (typeof window === 'undefined') return;
     Object.keys(localStorage)
       .filter(key => key.includes('cqs_maintenance_spare_parts'))
+      .forEach(key => localStorage.removeItem(key));
+  },
+  
+  schedules: () => {
+    if (typeof window === 'undefined') return;
+    Object.keys(localStorage)
+      .filter(key => key.includes('cqs_maintenance_schedules'))
       .forEach(key => localStorage.removeItem(key));
   },
   

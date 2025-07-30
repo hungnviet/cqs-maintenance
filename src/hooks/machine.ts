@@ -248,7 +248,17 @@ export async function updateMachineSchedule(machineCode: string, scheduleData: S
     body: JSON.stringify(scheduleData),
   });
   if (!res.ok) throw new Error('Failed to update machine schedule');
-  return res.json();
+  
+  const result = await res.json();
+  
+  // Invalidate related cache when updating schedule
+  if (result.success) {
+    invalidateCache.machineSchedule(machineCode);
+    invalidateCache.machineDetail(machineCode);
+    invalidateCache.schedules(); // Also invalidate main schedules cache
+  }
+  
+  return result;
 }
 
 export async function createMachineSchedule(machineCode: string, scheduleData: ScheduleData) {
@@ -258,7 +268,17 @@ export async function createMachineSchedule(machineCode: string, scheduleData: S
     body: JSON.stringify(scheduleData),
   });
   if (!res.ok) throw new Error('Failed to create machine schedule');
-  return res.json();
+  
+  const result = await res.json();
+  
+  // Invalidate related cache when creating schedule
+  if (result.success) {
+    invalidateCache.machineSchedule(machineCode);
+    invalidateCache.machineDetail(machineCode);
+    invalidateCache.schedules(); // Also invalidate main schedules cache
+  }
+  
+  return result;
 }
 
 export async function deleteMachineSchedule(machineCode: string, scheduleId: string) {
@@ -266,7 +286,17 @@ export async function deleteMachineSchedule(machineCode: string, scheduleId: str
     method: 'DELETE',
   });
   if (!res.ok) throw new Error('Failed to delete machine schedule');
-  return res.json();
+  
+  const result = await res.json();
+  
+  // Invalidate related cache when deleting schedule
+  if (result.success) {
+    invalidateCache.machineSchedule(machineCode);
+    invalidateCache.machineDetail(machineCode);
+    invalidateCache.schedules(); // Also invalidate main schedules cache
+  }
+  
+  return result;
 }
 
 export async function getMachineMaintenanceTemplates(machineCode: string) {

@@ -139,11 +139,14 @@ export default function MaintenanceFillPage() {
         })
       });
       
+      const responseData = await response.json();
+      
       if (response.ok) {
         toast.success('Maintenance form saved successfully');
-        router.push(`/machines/${machineCode}/schedule`);
+        // Add a refresh parameter to trigger schedule reload
+        router.push(`/machines/${machineCode}/schedule?refresh=true`);
       } else {
-        toast.error('Failed to save maintenance form');
+        toast.error(responseData.error || 'Failed to save maintenance form');
       }
     } catch (error) {
       console.error('Error saving maintenance form:', error);

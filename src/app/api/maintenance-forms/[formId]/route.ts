@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import CompletedMaintenanceForm from '@/models/CompletedMaintenanceForm';
+import MachineType from '@/models/MachineType';
+import Machine from '@/models/Machine';
 
 export async function GET(
   req: NextRequest, 
   { params }: { params: Promise<{ formId: string }> }
 ) {
   await dbConnect();
-  
+  void MachineType; 
+  void Machine; 
   try {
     const { formId } = await params;
     

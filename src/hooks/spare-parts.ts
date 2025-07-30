@@ -26,9 +26,10 @@ interface UseSparePartsParams {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   plant?: string;
+  refreshKey?: number; // Add refresh trigger
 }
 
-export function useSpareParts({ search = '', pageIndex = 1, pageSize = 10, sortBy = 'sparePartName', sortOrder = 'asc', plant = '' }: UseSparePartsParams) {
+export function useSpareParts({ search = '', pageIndex = 1, pageSize = 10, sortBy = 'sparePartName', sortOrder = 'asc', plant = '', refreshKey = 0 }: UseSparePartsParams) {
   const [data, setData] = useState<SparePart[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -43,8 +44,8 @@ export function useSpareParts({ search = '', pageIndex = 1, pageSize = 10, sortB
       search, pageIndex, pageSize, sortBy, sortOrder, plant 
     });
     
-    // Check cache first
-    const cachedData = localStorageManager.get<{data: SparePart[], total: number, allPlants: string[]}>(cacheKey);
+    // Check cache first, but skip if refreshKey changed (force refresh)
+    const cachedData = refreshKey === 0 ? localStorageManager.get<{data: SparePart[], total: number, allPlants: string[]}>(cacheKey) : null;
     if (cachedData) {
       setData(cachedData.data || []);
       setTotal(cachedData.total || 0);
@@ -101,7 +102,7 @@ export function useSpareParts({ search = '', pageIndex = 1, pageSize = 10, sortB
       clearTimeout(timeout);
       controller.abort();
     };
-  }, [search, pageIndex, pageSize, sortBy, sortOrder, plant]);
+  }, [search, pageIndex, pageSize, sortBy, sortOrder, plant, refreshKey]); // Add refreshKey to dependencies
 
   return { data, total, loading, allPlants };
 }

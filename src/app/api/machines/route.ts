@@ -97,6 +97,14 @@ export async function POST(req: NextRequest) {
     // Update machine with references to the created templates
     machine.maintenanceForms = createdTemplates;
     await machine.save({ session });
+    
+    // Increment totalMachines count in the MachineType
+    await MachineType.findByIdAndUpdate(
+      machineData.machineType,
+      { $inc: { totalMachines: 1 } },
+      { session }
+    );
+    
     await session.commitTransaction();
     return NextResponse.json({ success: true, data: { machine, templates: createdTemplates } });
   } catch (error) {

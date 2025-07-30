@@ -6,6 +6,8 @@ import { useSpareParts } from '@/hooks/spare-parts';
 import SearchBar from '@/components/spare-parts/SearchBar';
 import SparePartForm from '@/components/spare-parts/Form';
 import { Button } from '@/components/ui/button';
+import { invalidateCache } from '@/lib/localStorage';
+import { toast } from 'sonner';
 import type { SparePart } from '@/hooks/spare-parts';
 
 // Force dynamic rendering
@@ -26,8 +28,17 @@ function SparePartsPageContent() {
   // Form state
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedSparePart, setSelectedSparePart] = useState<SparePart | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0); // Add refresh trigger
 
-  const { data, total, loading, allPlants } = useSpareParts({ search, pageIndex, pageSize, sortBy, sortOrder, plant });
+  const { data, total, loading, allPlants } = useSpareParts({ 
+    search, 
+    pageIndex, 
+    pageSize, 
+    sortBy, 
+    sortOrder, 
+    plant,
+    refreshKey // Pass refresh key to force reload
+  });
 
   // Debounce search input
   const handleSearch = useCallback((value: string) => {
@@ -107,6 +118,8 @@ function SparePartsPageContent() {
 
   const handleFormSubmit = async (formData: Partial<SparePart>, imageFile?: File) => {
     try {
+      toast.loading('Saving spare part...');
+      
       const formDataToSend = new FormData();
       if (imageFile) {
         formDataToSend.append('image', imageFile);
@@ -128,9 +141,16 @@ function SparePartsPageContent() {
         throw new Error('Failed to save spare part');
       }
 
-      // Refresh the data
-      window.location.reload();
+      toast.dismiss();
+      toast.success(selectedSparePart ? 'Spare part updated successfully' : 'Spare part created successfully');
+      
+      // Invalidate cache and trigger refresh
+      invalidateCache.spareParts();
+      setRefreshKey(prev => prev + 1); // Trigger fresh data load
+      
     } catch (error) {
+      toast.dismiss();
+      toast.error('Failed to save spare part');
       console.error('Error saving spare part:', error);
       throw error;
     }

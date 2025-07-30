@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -40,6 +40,7 @@ const frequencies = [
 export default function SchedulePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const machineCode = params.machineCode as string;
   
   const [machine, setMachine] = useState<{
@@ -58,20 +59,27 @@ export default function SchedulePage() {
     count: 1
   });
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (showLoadingToast = false, forceRefresh = false) => {
     try {
+      if (showLoadingToast) {
+        toast.loading('Refreshing schedule data...');
+      }
       setLoading(true);
       
       // Load machine details
-      const machineResponse = await getMachineDetail(machineCode);
+      const machineResponse = await getMachineDetail(machineCode, forceRefresh);
       if (machineResponse.success) {
         setMachine(machineResponse.data);
       }
       
       // Load schedules
-      const scheduleResponse = await getMachineSchedule(machineCode);
+      const scheduleResponse = await getMachineSchedule(machineCode, forceRefresh);
       if (scheduleResponse.success) {
         setSchedules(scheduleResponse.data || []);
+      }
+      
+      if (showLoadingToast) {
+        toast.dismiss();
       }
     } catch {
       toast.error('Failed to load data');
@@ -83,6 +91,18 @@ export default function SchedulePage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Handle refresh after form completion
+  useEffect(() => {
+    const shouldRefresh = searchParams.get('refresh');
+    if (shouldRefresh === 'true') {
+      // Remove the refresh parameter from URL and reload data
+      const newUrl = `/machines/${machineCode}/schedule`;
+      router.replace(newUrl);
+      loadData(true, true); // Show loading toast and force refresh to bypass cache
+      toast.success('Schedule updated with completed maintenance');
+    }
+  }, [searchParams, machineCode, router, loadData]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -165,7 +185,7 @@ export default function SchedulePage() {
         toast.success(`${newSchedule.count} ${newSchedule.frequency.toLowerCase()} schedules created successfully`);
         setShowNewModal(false);
         setNewSchedule({ frequency: '', plannedDate: '', count: 1 });
-        loadData();
+        loadData(true, true); // Show loading toast and force refresh to bypass cache
       } else {
         toast.error('Failed to create schedules');
       }
@@ -188,7 +208,7 @@ export default function SchedulePage() {
       
       if (response.success) {
         toast.success('Schedule deleted successfully');
-        loadData();
+        loadData(true, true); // Show loading toast and force refresh to bypass cache
       } else {
         toast.error('Failed to delete schedule');
       }
