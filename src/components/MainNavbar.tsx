@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Building2, Wrench, Cog, Package, Calendar, Info } from 'lucide-react';
+import { Building2, Wrench, Cog, Package, Calendar, Info, ClipboardList } from 'lucide-react';
 
 const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: Building2 },
@@ -10,6 +10,7 @@ const navItems = [
   { label: 'Machines', href: '/machines', icon: Wrench },
   { label: 'Spare Parts', href: '/spare-parts', icon: Package },
   { label: 'Schedule', href: '/schedule', icon: Calendar },
+  { label: 'Maintenance Requests', href: '/maintenance-requests', icon: ClipboardList },
   { label: 'About Us', href: '/about', icon: Info },
 ];
 
